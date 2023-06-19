@@ -17,5 +17,8 @@
   "homepage": "https://github.com/Brandon-B9845/D3-scraper#readme",
   "devDependencies": {
     "@playwright/test": "^1.35.1"
+  },
+  "dependencies": {
+    "playwright": "^1.35.1"
   }
 }
