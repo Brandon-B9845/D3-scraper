@@ -4,13 +4,9 @@ import { appendFileSync, writeFileSync } from "fs";
 interface LocationObj {
   name?: string;
   address?: string;
-  latLng?: string;
   descriptionShort?: string;
   descriptionLong?: string;
   imageUrl?: string;
-  review?: string;
-  reviewCount?: string;
-  phone?: string;
   website?: string;
 }
 
@@ -18,7 +14,13 @@ export async function main() {
   const browser = await chromium.launch({ headless: false });
   const page = await browser.newPage();
   await page.goto("https://www.flavortownusa.com/locations?page=1");
-  await cycleCards(page);
+  const nextBtn = page.evaluate(() => {
+    document.querySelector(".PagedList-skipToNext > a");
+  });
+  while (nextBtn) {
+    await cycleCards(page);
+  }
+  console.log('check pleeeasssee')
 }
 
 const cycleCards = async (page: any) => {
@@ -33,44 +35,100 @@ const cycleCards = async (page: any) => {
         `div >div:nth-child(4) > div:nth-child(2) >div:nth-child(${i}) > div > a`
       );
       //TODO build Obj
-      await LocationObjBuilder(page)
-      await console.log("I made an object WooHoo!");
+      const locationObj = await LocationObjBuilder(page);
+      console.log(locationObj)
+      await write(locationObj)
+    console.log("I made an object WooHoo!");
       //go back 1 page
       await page.goBack();
     }
   }
   //click the next button
-  console.log("check pleeassseee");
+  await page.waitForSelector(".PagedList-skipToNext > a");
+  await page.click(".PagedList-skipToNext > a");
 };
-
 
 //document.querySelector('div:nth-child(2) > div:nth-child(4) > div > div') <-- this gets you into the column
 const LocationObjBuilder = async (page: any) => {
-    await page.waitForSelector(
-      "div:nth-child(2) > div:nth-child(4) > div > div"
-    )
-    const children = await page.$$(
-      "div:nth-child(2) > div:nth-child(4) > div > div >div:nth-child(3) :not(.listing-links-container):not(.contact-links):has(*)"
+  await page.waitForSelector("div:nth-child(2) > div:nth-child(4) > div > div");
+
+  const textContents = await page.evaluate(() => {
+    const parentDiv = document.querySelector(
+      "div:nth-child(2) > div:nth-child(4) > div > div >div:nth-child(3)"
+    );
+    const divsWithoutClass = Array.from(
+      parentDiv?.querySelectorAll("div:not([class])") ?? null
     );
 
-    const locationObj = await page.evaluate((children: any) => {
-      const name = document.querySelector(
-        "div:nth-child(2) > div:nth-child(4) > div > div > div > div > h1"
-      )?.innerHTML;
-      const address = document.querySelector(
-        "div:nth-child(2) > div:nth-child(4) > div > div > div > div > span"
-      )?.textContent;
+    return divsWithoutClass.map((div) => div?.textContent);
+  });
 
-      for (const child of children) {
-        const textContent = child.textContent();
-        console.log(textContent);
+  const description = textContents.join("");
+
+  const href = await page.evaluate(() => {
+    const anchor = document.querySelectorAll(
+      "#listing-photos > div > div >div > a"
+    );
+    const href = Array.from(
+      anchor,
+      (anchor) => (anchor as HTMLAnchorElement)?.href
+    );
+    return href;
+  });
+
+  const locationObj = {
+    name: await page.evaluate(
+      () =>
+        document.querySelector(
+          "div:nth-child(2) > div:nth-child(4) > div > div > div > div > h1"
+        )?.innerHTML
+    ),
+    address: await page.evaluate(
+      () =>
+        document.querySelector(
+          "div:nth-child(2) > div:nth-child(4) > div > div > div > div > span"
+        )?.textContent
+    ),
+    descriptionShort: await page.evaluate(() => {
+      return document.querySelector(
+        "div:nth-child(2) > div:nth-child(4) > div > div >div:nth-child(3) > div"
+      )?.textContent;
+    }),
+    descriptionLong: description,
+    website: await page.evaluate(() => {
+      return document.querySelector(
+        ".listing-links-container > ul > li:nth-child(2) > a"
+      )?.textContent;
+    }),
+    imageUrl: href,
+  };
+  return locationObj;
+};
+
+
+const write = async (data) => {
+  try {
+    const cleanData = sanitize(data);
+    const formattedData: string = Object.values(cleanData).join(";");
+
+    appendFileSync("DinersDrivein.csv", formattedData + "\n");
+  } catch (e) {
+    console.log("write");
+    console.error(e);
+  }
+};
+
+function sanitize(obj: any): any {
+  try {
+    return Object.keys(obj).reduce((accum, currentKey) => {
+      let value = obj[currentKey];
+      if (typeof value === "string") {
+        value = (value as string)?.replace(/;/g, "");
       }
-      const locationObj = {
-        name: name,
-        address: address,
-      };
-      return locationObj;
-    });
-    console.log(locationObj)
-    return locationObj
+      return { ...accum, [currentKey]: value };
+    }, {});
+  } catch (e) {
+    console.log("sanitize");
+    console.error(e);
+  }
 }
