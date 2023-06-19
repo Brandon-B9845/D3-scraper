@@ -1,0 +1,21 @@
+{
+  "name": "d3-scraper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Brandon-B9845/D3-scraper.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Brandon-B9845/D3-scraper/issues"
+  },
+  "homepage": "https://github.com/Brandon-B9845/D3-scraper#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.35.1"
+  }
+}
