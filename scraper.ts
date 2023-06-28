@@ -11,9 +11,9 @@ interface LocationObj {
 }
 
 export async function main() {
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
-  await page.goto("https://www.flavortownusa.com/locations?page=1");
+  await page.goto("https://www.flavortownusa.com/locations?page=70");
   const nextBtn = page.evaluate(() => {
     document.querySelector(".PagedList-skipToNext > a");
   });
@@ -53,9 +53,7 @@ const LocationObjBuilder = async (page: any) => {
   await page.waitForSelector("div:nth-child(2) > div:nth-child(4) > div > div");
 
   const textContents = await page.evaluate(() => {
-    const parentDiv = document.querySelector(
-      "div:nth-child(2) > div:nth-child(4) > div > div >div:nth-child(3)"
-    );
+    const parentDiv = document.querySelector("#listing-overview");
     const divsWithoutClass = Array.from(
       parentDiv?.querySelectorAll("div:not([class])") ?? null
     );
@@ -78,29 +76,24 @@ const LocationObjBuilder = async (page: any) => {
 
   const locationObj = {
     name: await page.evaluate(
-      () =>
-        document.querySelector(
-          "div:nth-child(2) > div:nth-child(4) > div > div > div > div > h1"
-        )?.innerHTML
+      () => document.querySelector(".listing-titlebar-title > h1")?.textContent
     ),
     address: await page.evaluate(
       () =>
-        document.querySelector(
-          "div:nth-child(2) > div:nth-child(4) > div > div > div > div > span"
-        )?.textContent
+        document.querySelector(".listing-titlebar-title > span")?.textContent
     ),
     descriptionShort: await page.evaluate(() => {
-      return document.querySelector(
-        "div:nth-child(2) > div:nth-child(4) > div > div >div:nth-child(3) > div"
-      )?.textContent;
+      return document.querySelector("#listing-overview > div").textContent;
+
     }),
     descriptionLong: description,
+   
     website: await page.evaluate(() => {
       return document.querySelector(
-        ".listing-links-container > ul > li:nth-child(2) > a"
+        ".listing-links-container > ul > li:last-child > a"
       )?.textContent;
     }),
-    imageUrl: href,
+    imageUrl: href ? href : null,
   };
   return locationObj;
 };
